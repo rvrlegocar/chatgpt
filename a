@@ -1,0 +1,307 @@
+local seats = {
+	script.Parent.Chair1.Seat,
+	script.Parent.Chair2.Seat,
+	script.Parent.Chair3.Seat,
+	script.Parent.Chair4.Seat,
+	script.Parent.Chair5.Seat
+}
+
+local debounce = {}
+local timerActive = false
+local timerDelay = 5 -- 5 seconds
+local timerEndTime = 0
+
+local timerLabel = script.Parent.starttimer.BillboardGui.TextLabel
+local Debris = game:GetService("Debris")
+local partToClone = game.Workspace.Part
+
+local Part1000 = game.Workspace.chips["$1000"]
+local Part500 = game.Workspace.chips["$500"]
+local Part100 = game.Workspace.chips["$100"]
+local Part25 = game.Workspace.chips["$25"]
+local Part20 = game.Workspace.chips["$20"]
+local Part10 = game.Workspace.chips["$10"]
+local Part5 = game.Workspace.chips["$5"]
+local Part1 = game.Workspace.chips["$1"]
+
+-- Create a table to keep track of cloned parts
+local clonedParts = {}
+
+function clonePartOnce(model, position, rotation)
+	local parts = model:GetChildren()
+
+	-- Filter out parts that have already been cloned
+	local unclonedParts = {}
+	for i, part in ipairs(parts) do
+		if not clonedParts[part] and part:IsA("BasePart") then
+			table.insert(unclonedParts, part)
+		end
+	end
+
+	-- If there are no uncloned parts left, return nil
+	if #unclonedParts == 0 then
+		print("All parts have been cloned.")
+		return nil
+	end
+
+	-- Select a random uncloned part
+	local randomIndex = math.random(1, #unclonedParts)
+	local randomPart = unclonedParts[randomIndex]
+
+	-- Clone the part and set its position and rotation
+	local clonedPart = randomPart:Clone()
+	clonedPart.Position = position
+	clonedPart.Orientation = rotation
+	clonedPart.Parent = workspace
+
+	-- Print the value of the cloned part
+	print("Cloned part value: ", clonedPart.Value.Value)
+
+	-- Mark the part as cloned
+	clonedParts[randomPart] = true
+
+	return clonedPart
+end
+
+local function checkSeat(seatIndex)
+	local seat = seats[seatIndex]
+	if seat.Occupant ~= nil and not debounce[seatIndex] then
+		debounce[seatIndex] = true
+		print("Player is in seat ".. seatIndex .. "!")
+
+		if not timerActive then
+			timerActive = true
+			timerEndTime = tick() + timerDelay
+			print("Timer started!")
+		end
+	elseif seat.Occupant == nil and debounce[seatIndex] then
+		debounce[seatIndex] = false
+		print("Player has left seat ".. seatIndex .. "!")
+
+		local allSeatsEmpty = true
+		for i = 1, #seats do
+			if seats[i].Occupant ~= nil then
+				allSeatsEmpty = false
+				break
+			end
+		end
+
+		if allSeatsEmpty then
+			timerActive = false
+			print("Timer stopped!")
+			timerLabel.Text = ""
+		end
+	end
+end
+
+game:GetService("RunService").Heartbeat:Connect(function()
+	for i = 1, #seats do
+		checkSeat(i)
+	end
+
+	if timerActive then
+		local remainingTime = timerEndTime - tick()
+		if remainingTime <= 0 then
+			remainingTime = 0
+		end
+
+		timerLabel.Text = string.format("Starting in: %.1f", remainingTime)
+
+		if remainingTime <= 0 then
+			print("Timer expired!")
+			timerActive = false
+			timerLabel.Text = ""
+
+			local Players = game:GetService("Players")
+
+			for i, seat in ipairs(seats) do
+				if seat.Occupant ~= nil then
+					local player = Players:GetPlayerFromCharacter(seat.Occupant.Parent)
+					if player then
+						coroutine.wrap(function()
+							local partClone = game.Workspace.PartToClone:Clone()
+							partClone.Parent = player.PlayerGui
+							Debris:AddItem(partClone, 10)
+
+							local remoteEvent = Instance.new("RemoteEvent")
+							remoteEvent.Name = "TextUpdateEvent"
+							remoteEvent.Parent = game.ReplicatedStorage
+
+							wait(10)
+
+							remoteEvent.OnServerEvent:Connect(function(player, newText)
+								print("Received new text from", player.Name, ":", newText)
+
+								local leaderstats = player:FindFirstChild("leaderstats")
+								if leaderstats then
+									local money = leaderstats:FindFirstChild("Money")
+									if money then
+										print(player.Name .. " has " .. money.Value .. " money.")
+										local newTextNumber = tonumber(newText)
+										if newTextNumber then
+											local moneyleft = money.Value - newTextNumber
+											if money.Value < newTextNumber then
+												newTextNumber = 0
+												print("Not enough money server")
+											end
+												print(moneyleft)
+												money.Value = moneyleft
+
+												local head = player.Character:FindFirstChild("Head")
+												if head then
+													local headPos = head.Position
+													local lookVector = head.CFrame.LookVector
+													local newPos = headPos + (lookVector * 4)
+
+													print("New position: ", newPos)
+
+													local clonedPart = partToClone:Clone()
+													clonedPart.Position = newPos
+													clonedPart.BillboardGui.TextLabel.Text = "$" .. newTextNumber
+
+													local newTextNumberClone = newTextNumber
+													clonedPart.Parent = game.Workspace
+													
+													while newTextNumberClone > 10000000000000 do
+														newTextNumberClone = newTextNumberClone - 1000000000
+													end
+													while newTextNumberClone > 1000000000000 do
+														newTextNumberClone = newTextNumberClone - 100000000
+													end
+													while newTextNumberClone > 100000000000 do
+														newTextNumberClone = newTextNumberClone - 10000000
+													end
+													while newTextNumberClone > 10000000000 do
+														newTextNumberClone = newTextNumberClone - 1000000
+													end
+													while newTextNumberClone > 1000000000 do
+														newTextNumberClone = newTextNumberClone - 100000
+													end
+													while newTextNumberClone > 100000000 do
+														newTextNumberClone = newTextNumberClone - 10000
+													end
+													while newTextNumberClone > 10000000 do
+														newTextNumberClone = newTextNumberClone - 1000
+													end
+													while newTextNumberClone > 1000000 do
+														newTextNumberClone = newTextNumberClone - 100
+													end
+													while newTextNumberClone > 100000 do
+														newTextNumberClone = newTextNumberClone - 10
+													end
+													while newTextNumberClone > 10000 do
+														newTextNumberClone = newTextNumberClone - 1
+													end
+													while newTextNumberClone >= 1000 do
+														local clone1000 = Part1000:Clone()
+														clone1000.Parent = game.Workspace
+														clone1000.Position = newPos
+														clone1000.Anchored = false
+														Debris:AddItem(clone1000, 10)
+														newTextNumberClone = newTextNumberClone - 1000
+													end
+													while newTextNumberClone >= 500 do
+														local clone500 = Part500:Clone()
+														clone500.Parent = game.Workspace
+														clone500.Position = newPos
+														clone500.Anchored = false
+														Debris:AddItem(clone500, 10)
+														newTextNumberClone = newTextNumberClone - 500
+													end
+													while newTextNumberClone >= 100 do
+														local clone100 = Part100:Clone()
+														clone100.Parent = game.Workspace
+														clone100.Position = newPos
+														clone100.Anchored = false
+														Debris:AddItem(clone100, 10)
+														newTextNumberClone = newTextNumberClone - 100
+													end
+													while newTextNumberClone >= 25 do
+														local clone25 = Part25:Clone()
+														clone25.Parent = game.Workspace
+														clone25.Position = newPos
+														clone25.Anchored = false
+														Debris:AddItem(clone25, 10)
+														newTextNumberClone = newTextNumberClone - 25
+													end
+													while newTextNumberClone >= 20 do
+														local clone20 = Part20:Clone()
+														clone20.Parent = game.Workspace
+														clone20.Position = newPos
+														clone20.Anchored = false
+														Debris:AddItem(clone20, 10)
+														newTextNumberClone = newTextNumberClone - 20
+													end
+													while newTextNumberClone >= 10 do
+														local clone10 = Part10:Clone()
+														clone10.Parent = game.Workspace
+														clone10.Position = newPos
+														clone10.Anchored = false
+														Debris:AddItem(clone10, 10)
+														newTextNumberClone = newTextNumberClone - 10
+													end
+													while newTextNumberClone >= 5 do
+														local clone5 = Part5:Clone()
+														clone5.Parent = game.Workspace
+														clone5.Position = newPos
+														clone5.Anchored = false
+														Debris:AddItem(clone5, 10)
+														newTextNumberClone = newTextNumberClone - 5
+													end
+													while newTextNumberClone >= 1 do
+														local clone1 = Part1:Clone()
+														clone1.Parent = game.Workspace
+														clone1.Position = newPos
+														clone1.Anchored = false
+														Debris:AddItem(clone1, 10)
+														newTextNumberClone = newTextNumberClone - 1
+													end
+													
+													if script.Parent.Chair1.Seat.Occupant then
+														local cardplacementpos1 = script.Parent["Card Placement1"].Position + Vector3.new(0, 0, 0)
+														local cardplacementrot1 = script.Parent["Card Placement1"].Orientation + Vector3.new(0, 0, -90)
+														print(tostring(cardplacementpos1))
+														print(tostring(cardplacementrot1))
+													    clonePartOnce(game.workspace.Model, cardplacementpos1, cardplacementrot1)
+													end
+													if script.Parent.Chair2.Seat.Occupant then
+														local cardplacementpos2 = script.Parent["Card Placement2"].Position + Vector3.new(0, 0, 0)
+														local cardplacementrot2 = script.Parent["Card Placement2"].Orientation + Vector3.new(0, 0, -90)
+														print(tostring(cardplacementpos2))
+														print(tostring(cardplacementrot2))
+													    clonePartOnce(game.workspace.Model, cardplacementpos2, cardplacementrot2)
+													end
+													if script.Parent.Chair3.Seat.Occupant then
+														local cardplacementpos3 = script.Parent["Card Placement3"].Position + Vector3.new(0, 0, 0)
+														local cardplacementrot3 = script.Parent["Card Placement3"].Orientation + Vector3.new(0, 0, -90)
+														print(tostring(cardplacementpos3))
+														print(tostring(cardplacementrot3))
+													    clonePartOnce(game.workspace.Model, cardplacementpos3, cardplacementrot3)
+													end
+													if script.Parent.Chair4.Seat.Occupant then
+														local cardplacementpos4 = script.Parent["Card Placement4"].Position + Vector3.new(0, 0, 0)
+														local cardplacementrot4 = script.Parent["Card Placement4"].Orientation + Vector3.new(0, 0, -90)
+														print(tostring(cardplacementpos4))
+														print(tostring(cardplacementrot4))
+													    clonePartOnce(game.workspace.Model, cardplacementpos4, cardplacementrot4)
+													end
+													if script.Parent.Chair5.Seat.Occupant then
+														local cardplacementpos5 = script.Parent["Card Placement5"].Position + Vector3.new(0, 0, 0)
+														local cardplacementrot5 = script.Parent["Card Placement5"].Orientation + Vector3.new(0, 0, -90)
+														print(tostring(cardplacementpos5))
+														print(tostring(cardplacementrot5))
+													    clonePartOnce(game.workspace.Model, cardplacementpos5, cardplacementrot5)
+													end
+												end
+											
+										end
+									end
+								end
+							end)
+						end)()
+					end
+				end
+			end
+		end
+	end
+end)
